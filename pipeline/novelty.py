@@ -1,42 +1,89 @@
-"""Look up candidate sequences in the OEIS API."""
+"""Check verified NOVUM candidates against the OEIS search API."""
 
 from __future__ import annotations
 
-import json
 import argparse
-from pathlib import Path
+import json
+import sys
+import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+from typing import Any
+
+PREFIX_LENGTH = 10
 
 
-def lookup_oeis(terms: list[int], timeout: int = 10) -> list[dict[str, object]]:
-    """Return matching OEIS entries, or an empty list when lookup is unavailable."""
-    query = ",".join(str(term) for term in terms[:10])
+def lookup_oeis(terms: list[int], timeout: int = 10) -> dict[str, Any]:
+    """Return reproducible lookup metadata without treating failures as no match."""
+    query_terms = terms[:PREFIX_LENGTH]
+    query = ",".join(str(term) for term in query_terms)
     url = "https://oeis.org/search?" + urllib.parse.urlencode(
-        {"q": f"{query}", "fmt": "json"}
+        {"q": query, "fmt": "json"}
     )
+    result: dict[str, Any] = {
+        "source": "OEIS",
+        "query_terms": query_terms,
+        "query": query,
+        "lookup_status": "LOOKUP_FAILED",
+        "match_found": False,
+        "oeis_ids": [],
+    }
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response:
             payload = json.load(response)
-    except (OSError, ValueError):
-        return []
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        result["error"] = str(exc)
+        return result
     if not isinstance(payload, dict):
-        return []
-    matches = payload.get("matches", [])
-    return matches if isinstance(matches, list) else []
+        result["error"] = "OEIS response was not a JSON object"
+        return result
+    matches = payload.get("results", payload.get("matches", []))
+    if not isinstance(matches, list):
+        result["error"] = "OEIS response did not contain a result list"
+        return result
+    ids: list[str] = []
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        identifier = match.get("number") or match.get("id")
+        if identifier is not None:
+            ids.append(str(identifier))
+    result["oeis_ids"] = ids
+    result["match_found"] = bool(ids)
+    result["lookup_status"] = "DUPLICATE" if ids else "NO_MATCH_FOUND"
+    return result
 
 
-if __name__ == "__main__":
+def enrich_results(path: Path) -> int:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or not isinstance(payload.get("candidates"), list):
+            raise ValueError("results must contain a candidates array")
+        for candidate in payload["candidates"]:
+            if not isinstance(candidate, dict) or not isinstance(candidate.get("terms"), list):
+                raise ValueError("each result candidate must contain terms")
+            lookup = lookup_oeis(candidate["terms"])
+            candidate["novelty_check"] = lookup
+            if lookup["lookup_status"] == "LOOKUP_FAILED":
+                candidate["verdict"] = "LOOKUP_FAILED"
+            elif lookup["lookup_status"] == "DUPLICATE":
+                candidate["verdict"] = "DUPLICATE"
+            else:
+                candidate["verdict"] = "NOVEL-UNPROVEN"
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return 0
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        print(f"novelty check failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results", type=Path)
     args = parser.parse_args()
-    payload = json.loads(args.results.read_text(encoding="utf-8"))
-    for candidate in payload.get("candidates", []):
-        matches = lookup_oeis(candidate["terms"])
-        candidate["oeis_matches"] = [
-            {key: match[key] for key in ("number", "name") if key in match}
-            for match in matches
-            if isinstance(match, dict)
-        ]
-        candidate["novelty"] = "duplicate" if matches else "unmatched"
-    args.results.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return enrich_results(args.results)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

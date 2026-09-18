@@ -8,25 +8,33 @@ on:
 jobs:
   discover:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install tools
-        run: pip install sympy networkx z3-solver requests
+        run: python -m pip install sympy pytest
       - name: Generate candidates
-        run: python candidates/gen.py > results/candidates.json
-      - name: Test & verify
-        run: python pipeline/test.py results/candidates.json > results/results.json
-        env:
-          PYTHONPATH: .
+        run: python candidates/gen.py --output results/candidates.json
+      - name: Verify candidates
+        if: always()
+        run: python pipeline/test.py results/candidates.json --output results/results.json
       - name: Check novelty (OEIS)
         run: python pipeline/novelty.py results/results.json
+      - name: Validate results JSON
+        run: python -c "import json; from pathlib import Path; p=Path('results/results.json'); assert p.is_file(); data=json.loads(p.read_text(encoding='utf-8')); assert isinstance(data.get('candidates'), list); assert 'candidate_count' in data"
+      - name: Run tests
+        run: pytest -q
       - name: Commit results
         run: |
+          set -euo pipefail
           git config user.name "novum-bot"
           git config user.email "bot@novum.dev"
           git add results/
-          git commit -m "daily results $(date +%F)" || true
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "daily results $(date +%F)"
+            git push
+          fi
