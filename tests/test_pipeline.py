@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
 
 import candidates.gen as generator
 import pipeline.novelty as novelty
@@ -16,6 +18,22 @@ def test_generator_returns_200_integer_terms():
     assert candidates
     assert all(candidate["term_count"] >= 200 for candidate in candidates)
     assert all(type(term) is int for candidate in candidates for term in candidate["terms"])
+
+
+def test_binomial_transform_matches_factorial():
+    assert [generator.binomial_transform(n, 0) for n in range(6)] == [1, 1, 2, 6, 24, 120]
+
+
+def test_hankel_determinant_matches_manual_matrix():
+    matrix = [[generator.binomial_transform(i + j, 0) for j in range(3)] for i in range(3)]
+    assert generator.bareiss_determinant(matrix) == generator.hankel_determinant(0, 3)
+    assert generator.hankel_determinant(1, 2) == 2
+
+
+def test_hankel_candidates_are_reproducible():
+    candidates = generator.generate_candidates(shifts=(0, 2), term_count=8)
+    assert candidates == generator.generate_candidates(shifts=(0, 2), term_count=8)
+    assert all(generator.reproduce_candidate(candidate) == candidate["terms"] for candidate in candidates)
 
 
 def test_results_json_is_valid(tmp_path):

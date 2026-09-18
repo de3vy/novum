@@ -11,6 +11,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
+
 PREFIX_LENGTH = 10
 
 

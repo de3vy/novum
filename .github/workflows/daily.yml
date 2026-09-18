@@ -25,7 +25,7 @@ jobs:
       - name: Check novelty (OEIS)
         run: python pipeline/novelty.py results/results.json
       - name: Validate results JSON
-        run: python -c "import json; from pathlib import Path; p=Path('results/results.json'); assert p.is_file(); data=json.loads(p.read_text(encoding='utf-8')); assert isinstance(data.get('candidates'), list); assert 'candidate_count' in data"
+        run: python -c "import json, sys; sys.set_int_max_str_digits(0); from pathlib import Path; p=Path('results/results.json'); assert p.is_file(); data=json.loads(p.read_text(encoding='utf-8')); assert isinstance(data.get('candidates'), list); assert 'candidate_count' in data"
       - name: Run tests
         run: pytest -q
       - name: Commit results

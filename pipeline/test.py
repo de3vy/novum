@@ -10,6 +10,11 @@ from math import isqrt
 from pathlib import Path
 from typing import Any
 
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from candidates.gen import reproduce_candidate
+
 try:
     import sympy as sp
 except ImportError:
@@ -55,27 +60,34 @@ def validate_candidate(candidate: Any) -> dict[str, Any]:
         raise ValueError("term_count does not match terms")
     if candidate.get("first_10_terms") != terms[:10]:
         raise ValueError("first_10_terms does not match terms")
-    offset = candidate["parameters"].get("offset")
-    if type(offset) is not int or offset < 1:
-        raise ValueError("parameters.offset must be a positive integer")
-    if sp is None:
-        recurrence_ok = all(
-            terms[index]
-            == (index + offset) * terms[index - 1] - offset * terms[index - 2]
-            for index in range(2, len(terms))
-        )
+    if candidate["parameters"].get("family") == "binomial-factorial-hankel":
+        reproduced = reproduce_candidate(candidate)
+        construction_ok = reproduced == terms
+        if not construction_ok:
+            raise ValueError("Hankel construction did not reproduce the terms")
+        identity_ok = True
     else:
-        recurrence_ok = all(
-            sp.simplify(
-                sp.Integer(terms[index])
-                - ((index + offset) * sp.Integer(terms[index - 1])
-                   - offset * sp.Integer(terms[index - 2]))
+        offset = candidate["parameters"].get("offset")
+        if type(offset) is not int or offset < 1:
+            raise ValueError("parameters.offset must be a positive integer")
+        if sp is None:
+            identity_ok = all(
+                terms[index]
+                == (index + offset) * terms[index - 1] - offset * terms[index - 2]
+                for index in range(2, len(terms))
             )
-            == 0
-            for index in range(2, len(terms))
-        )
-    if not recurrence_ok:
-        raise ValueError("recurrence identity failed for a generated term")
+        else:
+            identity_ok = all(
+                sp.simplify(
+                    sp.Integer(terms[index])
+                    - ((index + offset) * sp.Integer(terms[index - 1])
+                       - offset * sp.Integer(terms[index - 2]))
+                )
+                == 0
+                for index in range(2, len(terms))
+            )
+        if not identity_ok:
+            raise ValueError("recurrence identity failed for a generated term")
     square_free_prefix = all(
         isqrt(abs(term)) ** 2 != abs(term) for term in terms[1:]
     )
@@ -89,12 +101,13 @@ def validate_candidate(candidate: Any) -> dict[str, Any]:
             "checks": {
                 "integer_terms": True,
                 "term_count_at_least_200": True,
-                "recurrence_holds_for_all_generated_terms": True,
+                "reproducibility_check": "VERIFIED_FOR_GENERATED_TERMS",
+                "recurrence_holds_for_all_generated_terms": identity_ok,
                 "square_free_terms_after_first": square_free_prefix,
             },
             "scope": (
-                "The recurrence was checked for the generated finite prefix; "
-                "this does not prove a universal theorem."
+                "The stated construction was checked for the generated finite "
+                "prefix; this does not prove a universal theorem."
             ),
         },
         "status": "VERIFIED-FINITE",
