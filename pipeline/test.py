@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from math import isqrt
+from pathlib import Path
+from datetime import date
 
 
 def is_integer_sequence(terms: list[int]) -> bool:
@@ -21,7 +25,13 @@ def check_terms(terms: list[int]) -> dict[str, object]:
 
 
 if __name__ == "__main__":
-    from candidates.gen import generate_candidates
-
-    for candidate in generate_candidates():
-        print(check_terms(candidate))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("candidates", type=Path)
+    args = parser.parse_args()
+    candidates = json.loads(args.candidates.read_text(encoding="utf-8"))
+    results = {
+        "date": date.today().isoformat(),
+        "candidates": [check_terms(candidate) for candidate in candidates],
+    }
+    json.dump(results, fp=__import__("sys").stdout, indent=2)
+    print()

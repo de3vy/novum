@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 
 def generate_candidates(limit: int = 10) -> list[list[int]]:
     """Return initial candidates from polynomial-coefficient recurrences."""
@@ -15,5 +16,5 @@ def generate_candidates(limit: int = 10) -> list[list[int]]:
 
 
 if __name__ == "__main__":
-    for sequence in generate_candidates():
-        print(sequence)
+    json.dump(generate_candidates(), fp=__import__("sys").stdout, indent=2)
+    print()

@@ -1,47 +1,32 @@
-name: Daily NOVUM exploration
+name: novum-daily
 
 on:
   schedule:
-    - cron: "0 6 * * *"
-  workflow_dispatch:
-
-permissions:
-  contents: write
+    - cron: "0 12 * * *"      # runs daily even without Manus (12:00 UTC)
+  workflow_dispatch:          # Manus triggers this manually each morning
 
 jobs:
-  explore:
+  discover:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
-      - name: Install dependencies
-        run: python -m pip install sympy
-      - name: Run candidate checks
-        run: python -m pipeline.test
-      - name: Commit generated results
+          python-version: "3.12"
+      - name: Install tools
+        run: pip install sympy networkx z3-solver requests
+      - name: Generate candidates
+        run: python candidates/gen.py > results/candidates.json
+      - name: Test & verify
+        run: python pipeline/test.py results/candidates.json > results/results.json
+        env:
+          PYTHONPATH: .
+      - name: Check novelty (OEIS)
+        run: python pipeline/novelty.py results/results.json
+      - name: Commit results
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results reports memory
-          git diff --cached --quiet || git commit -m "chore: record daily NOVUM run"
+          git config user.name "novum-bot"
+          git config user.email "bot@novum.dev"
+          git add results/
+          git commit -m "daily results $(date +%F)" || true
           git push
-
-  pages:
-    runs-on: ubuntu-latest
-    needs: explore
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/jekyll-build-pages@v1
-        with:
-          source: .
-          destination: ./_site
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./_site
-      - uses: actions/deploy-pages@v4
