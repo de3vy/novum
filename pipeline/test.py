@@ -66,6 +66,12 @@ def validate_candidate(candidate: Any) -> dict[str, Any]:
         if not construction_ok:
             raise ValueError("Hankel construction did not reproduce the terms")
         identity_ok = True
+    elif candidate["parameters"].get("family") == "q-binomial-sum":
+        reproduced = reproduce_candidate(candidate)
+        construction_ok = reproduced == terms
+        if not construction_ok:
+            raise ValueError("q-binomial construction did not reproduce the terms")
+        identity_ok = True
     else:
         offset = candidate["parameters"].get("offset")
         if type(offset) is not int or offset < 1:

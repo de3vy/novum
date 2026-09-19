@@ -1,4 +1,4 @@
-"""Generate binomial-transform Hankel determinant candidates for NOVUM."""
+"""Generate exact q-binomial transform candidates for NOVUM."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_SHIFTS = (0, 1, 2, 3, 4)
+DEFAULT_Q_VALUES = (2, 3, 4, 5, 6)
 DEFAULT_TERM_COUNT = 200
 
 if hasattr(sys, "set_int_max_str_digits"):
@@ -84,12 +85,51 @@ def generate_terms(shift: int, term_count: int) -> list[int]:
     return terms
 
 
+def gaussian_binomial(n: int, k: int, q: int) -> int:
+    """Return the exact Gaussian binomial coefficient [n choose k]_q."""
+    if n < 0 or k < 0 or k > n or q < 0:
+        raise ValueError("n, k, and q must satisfy n >= k >= 0 and q >= 0")
+    row = [1]
+    for row_n in range(1, n + 1):
+        next_row = [1]
+        for row_k in range(1, row_n):
+            next_row.append(row[row_k] + q ** (row_n - row_k) * row[row_k - 1])
+        next_row.append(1)
+        row = next_row
+    return row[k]
+
+
+def q_binomial_sum(n: int, q: int) -> int:
+    """Return S_n(q) = sum_{k=0}^n [n choose k]_q."""
+    if n < 0 or q < 0:
+        raise ValueError("n and q must be nonnegative")
+    return sum(gaussian_binomial(n, k, q) for k in range(n + 1))
+
+
+def generate_q_terms(q: int, term_count: int) -> list[int]:
+    if q < 0 or term_count < 1:
+        raise ValueError("q must be nonnegative and term_count must be positive")
+    terms: list[int] = []
+    row = [1]
+    for n in range(term_count):
+        terms.append(sum(row))
+        next_row = [1]
+        for k in range(1, n + 1):
+            next_row.append(row[k] + q ** (n + 1 - k) * row[k - 1])
+        next_row.append(1)
+        row = next_row
+    return terms
+
+
 def reproduce_candidate(candidate: dict[str, Any], term_count: int | None = None) -> list[int]:
     parameters = candidate["parameters"]
-    if parameters.get("family") != "binomial-factorial-hankel":
-        raise ValueError("unsupported candidate family")
     count = candidate["term_count"] if term_count is None else term_count
-    return generate_terms(parameters["shift"], count)
+    family = parameters.get("family")
+    if family == "binomial-factorial-hankel":
+        return generate_terms(parameters["shift"], count)
+    if family == "q-binomial-sum":
+        return generate_q_terms(parameters["q"], count)
+    raise ValueError("unsupported candidate family")
 
 
 def generate_candidates(
@@ -122,12 +162,40 @@ def generate_candidates(
     return candidates
 
 
+def generate_q_candidates(
+    q_values: tuple[int, ...] = DEFAULT_Q_VALUES,
+    term_count: int = DEFAULT_TERM_COUNT,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for q in q_values:
+        terms = generate_q_terms(q, term_count)
+        candidates.append(
+            {
+                "id": f"q-binomial-sum-q-{q}",
+                "definition": (
+                    "S_n(q) = sum(k=0..n) [n choose k]_q, where "
+                    "G(0,0)=1, G(n,0)=G(n,n)=1, and "
+                    "G(n,k)=G(n-1,k)+q^(n-k)G(n-1,k-1)"
+                ),
+                "parameters": {
+                    "family": "q-binomial-sum",
+                    "q": q,
+                },
+                "indexing": "zero-based n; terms[n] is S_n(q)",
+                "first_10_terms": terms[:10],
+                "term_count": len(terms),
+                "terms": terms,
+            }
+        )
+    return candidates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--term-count", type=int, default=DEFAULT_TERM_COUNT)
     args = parser.parse_args()
-    candidates = generate_candidates(term_count=args.term_count)
+    candidates = generate_q_candidates(term_count=args.term_count)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(candidates, indent=2) + "\n", encoding="utf-8")
     return 0

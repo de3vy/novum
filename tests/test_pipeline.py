@@ -36,6 +36,21 @@ def test_hankel_candidates_are_reproducible():
     assert all(generator.reproduce_candidate(candidate) == candidate["terms"] for candidate in candidates)
 
 
+def test_gaussian_binomial_known_values():
+    assert generator.gaussian_binomial(4, 2, 2) == 35
+    assert generator.gaussian_binomial(5, 2, 1) == 10
+    assert generator.q_binomial_sum(0, 2) == 1
+    assert [generator.q_binomial_sum(n, 2) for n in range(5)] == [1, 2, 5, 16, 67]
+
+
+def test_q_binomial_candidates_are_reproducible_and_have_200_terms():
+    candidates = generator.generate_q_candidates(q_values=(2, 3), term_count=200)
+    assert candidates == generator.generate_q_candidates(q_values=(2, 3), term_count=200)
+    assert all(candidate["term_count"] >= 200 for candidate in candidates)
+    assert all(type(term) is int for candidate in candidates for term in candidate["terms"])
+    assert all(generator.reproduce_candidate(candidate) == candidate["terms"] for candidate in candidates)
+
+
 def test_results_json_is_valid(tmp_path):
     candidate_path = tmp_path / "candidates.json"
     results_path = tmp_path / "results.json"
@@ -45,6 +60,20 @@ def test_results_json_is_valid(tmp_path):
     result = json.loads(results_path.read_text(encoding="utf-8"))
     assert result["candidate_count"] == len(result["candidates"])
     assert all(candidate["term_count"] >= 200 for candidate in result["candidates"])
+
+
+def test_q_binomial_results_are_accepted_by_pipeline(tmp_path):
+    candidate_path = tmp_path / "candidates.json"
+    results_path = tmp_path / "results.json"
+    candidate_path.write_text(
+        json.dumps(generator.generate_q_candidates(q_values=(2,))),
+        encoding="utf-8",
+    )
+
+    assert verify_file(candidate_path, results_path) == 0
+    result = json.loads(results_path.read_text(encoding="utf-8"))
+    assert result["pipeline_status"] == "OK"
+    assert result["candidates"][0]["status"] == "VERIFIED-FINITE"
 
 
 def test_malformed_candidate_is_detected_and_writes_pipeline_error(tmp_path):
