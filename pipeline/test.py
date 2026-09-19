@@ -60,17 +60,11 @@ def validate_candidate(candidate: Any) -> dict[str, Any]:
         raise ValueError("term_count does not match terms")
     if candidate.get("first_10_terms") != terms[:10]:
         raise ValueError("first_10_terms does not match terms")
-    if candidate["parameters"].get("family") == "binomial-factorial-hankel":
+    if candidate["parameters"].get("family") == "restricted-partition-rank":
         reproduced = reproduce_candidate(candidate)
         construction_ok = reproduced == terms
         if not construction_ok:
-            raise ValueError("Hankel construction did not reproduce the terms")
-        identity_ok = True
-    elif candidate["parameters"].get("family") == "q-binomial-sum":
-        reproduced = reproduce_candidate(candidate)
-        construction_ok = reproduced == terms
-        if not construction_ok:
-            raise ValueError("q-binomial construction did not reproduce the terms")
+            raise ValueError("restricted-partition construction did not reproduce the terms")
         identity_ok = True
     else:
         offset = candidate["parameters"].get("offset")

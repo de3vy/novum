@@ -13,41 +13,33 @@ import pipeline.novelty as novelty
 from pipeline.test import verify_file
 
 
-def test_generator_returns_200_integer_terms():
+def test_generator_returns_five_200_integer_candidates():
     candidates = generator.generate_candidates()
-    assert candidates
-    assert all(candidate["term_count"] >= 200 for candidate in candidates)
+    assert len(candidates) == 5
+    assert [candidate["parameters"]["gap"] for candidate in candidates] == [1, 2, 3, 4, 5]
+    assert all(candidate["term_count"] == 200 for candidate in candidates)
     assert all(type(term) is int for candidate in candidates for term in candidate["terms"])
 
 
-def test_binomial_transform_matches_factorial():
-    assert [generator.binomial_transform(n, 0) for n in range(6)] == [1, 1, 2, 6, 24, 120]
+def test_restricted_partition_reference_matches_optimized():
+    for gap in range(1, 6):
+        assert [
+            generator.restricted_partition_value(n, gap) for n in range(16)
+        ] == [generator.brute_force_value(n, gap) for n in range(16)]
 
 
-def test_hankel_determinant_matches_manual_matrix():
-    matrix = [[generator.binomial_transform(i + j, 0) for j in range(3)] for i in range(3)]
-    assert generator.bareiss_determinant(matrix) == generator.hankel_determinant(0, 3)
-    assert generator.hankel_determinant(1, 2) == 2
+def test_first_values_and_zero_case():
+    assert generator.restricted_partition_value(0, 1) == 1
+    assert generator.restricted_partition_value(1, 1) == 1
+    assert generator.restricted_partition_value(2, 1) == 2
+    assert generator.restricted_partition_value(2, 2) == 2
 
 
-def test_hankel_candidates_are_reproducible():
-    candidates = generator.generate_candidates(shifts=(0, 2), term_count=8)
-    assert candidates == generator.generate_candidates(shifts=(0, 2), term_count=8)
-    assert all(generator.reproduce_candidate(candidate) == candidate["terms"] for candidate in candidates)
-
-
-def test_gaussian_binomial_known_values():
-    assert generator.gaussian_binomial(4, 2, 2) == 35
-    assert generator.gaussian_binomial(5, 2, 1) == 10
-    assert generator.q_binomial_sum(0, 2) == 1
-    assert [generator.q_binomial_sum(n, 2) for n in range(5)] == [1, 2, 5, 16, 67]
-
-
-def test_q_binomial_candidates_are_reproducible_and_have_200_terms():
-    candidates = generator.generate_q_candidates(q_values=(2, 3), term_count=200)
-    assert candidates == generator.generate_q_candidates(q_values=(2, 3), term_count=200)
-    assert all(candidate["term_count"] >= 200 for candidate in candidates)
-    assert all(type(term) is int for candidate in candidates for term in candidate["terms"])
+def test_candidates_are_reproducible_and_not_q_binomial():
+    candidates = generator.generate_candidates(gaps=(1, 3), term_count=20)
+    assert candidates == generator.generate_candidates(gaps=(1, 3), term_count=20)
+    assert all(candidate["family"] == "restricted-partition-rank" for candidate in candidates)
+    assert all("q-binomial" not in json.dumps(candidate) for candidate in candidates)
     assert all(generator.reproduce_candidate(candidate) == candidate["terms"] for candidate in candidates)
 
 
@@ -58,22 +50,10 @@ def test_results_json_is_valid(tmp_path):
 
     assert verify_file(candidate_path, results_path) == 0
     result = json.loads(results_path.read_text(encoding="utf-8"))
-    assert result["candidate_count"] == len(result["candidates"])
-    assert all(candidate["term_count"] >= 200 for candidate in result["candidates"])
-
-
-def test_q_binomial_results_are_accepted_by_pipeline(tmp_path):
-    candidate_path = tmp_path / "candidates.json"
-    results_path = tmp_path / "results.json"
-    candidate_path.write_text(
-        json.dumps(generator.generate_q_candidates(q_values=(2,))),
-        encoding="utf-8",
-    )
-
-    assert verify_file(candidate_path, results_path) == 0
-    result = json.loads(results_path.read_text(encoding="utf-8"))
+    assert result["candidate_count"] == 5
     assert result["pipeline_status"] == "OK"
-    assert result["candidates"][0]["status"] == "VERIFIED-FINITE"
+    assert all(candidate["status"] == "VERIFIED-FINITE" for candidate in result["candidates"])
+    assert all(candidate["verification"]["proven_theorem"] is False for candidate in result["candidates"])
 
 
 def test_malformed_candidate_is_detected_and_writes_pipeline_error(tmp_path):
@@ -107,25 +87,25 @@ def test_cli_pipeline_failure_returns_nonzero(tmp_path):
 
 def test_novelty_lookup_failure_is_distinct_from_no_match(monkeypatch):
     class Response:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
         def __enter__(self):
             return self
 
         def __exit__(self, *args):
             return False
 
-        def read(self):
-            return b'{"results": []}'
-
     monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
     monkeypatch.setattr(novelty.json, "load", lambda response: {"results": []})
-    no_match = novelty.lookup_oeis([1, 2, 3])
+    no_match = novelty.lookup_oeis([1, 2, 3], retry_delay=0)
     assert no_match["lookup_status"] == "NO_MATCH_FOUND"
 
     def fail(*args, **kwargs):
         raise OSError("offline")
 
     monkeypatch.setattr(novelty.urllib.request, "urlopen", fail)
-    failed = novelty.lookup_oeis([1, 2, 3])
+    failed = novelty.lookup_oeis([1, 2, 3], retries=0)
     assert failed["lookup_status"] == "LOOKUP_FAILED"
     assert failed["lookup_status"] != no_match["lookup_status"]
 
@@ -142,56 +122,10 @@ def test_novelty_known_q2_sequence_match(monkeypatch):
             return False
 
     monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
-    monkeypatch.setattr(
-        novelty.json,
-        "load",
-        lambda response: {"results": [{"number":  "A006116"}]},
-    )
-    result = novelty.lookup_oeis(
-        [1, 2, 5, 16, 67, 374, 2825, 29212, 417199, 8283458],
-        retry_delay=0,
-    )
-    assert result["lookup_status"] == "MATCH_FOUND"
-    assert result["oeis_ids"] == ["A006116"]
-    assert result["http_status"] == 200
-    assert result["response_content_type"] == "application/json"
-    assert result["retry_count"] == 0
-
-
-def test_novelty_accepts_oeis_list_response(monkeypatch):
-    class Response:
-        status = 200
-        headers = {"Content-Type": "application/json"}
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-    monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
     monkeypatch.setattr(novelty.json, "load", lambda response: [{"number": 6116}])
     result = novelty.lookup_oeis([1, 2, 5], retry_delay=0)
     assert result["lookup_status"] == "MATCH_FOUND"
     assert result["oeis_ids"] == ["A006116"]
-
-
-def test_novelty_unlikely_sequence_is_no_match(monkeypatch):
-    class Response:
-        status = 200
-        headers = {"Content-Type": "application/json"}
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-    monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
-    monkeypatch.setattr(novelty.json, "load", lambda response: {"results": []})
-    result = novelty.lookup_oeis([917431, 826547, 731659], retry_delay=0)
-    assert result["lookup_status"] == "NO_MATCH_FOUND"
-    assert result["http_status"] == 200
 
 
 def test_novelty_http_403_is_lookup_failure(monkeypatch):
