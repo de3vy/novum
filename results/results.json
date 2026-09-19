@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-19T19:18:35.626897+00:00",
+  "generated_at": "2026-09-19T19:40:44.413456+00:00",
   "candidate_count": 5,
   "candidates": [
     {
@@ -255,12 +255,18 @@
           8283458
         ],
         "query": "1,2,5,16,67,374,2825,29212,417199,8283458",
-        "lookup_status": "LOOKUP_FAILED",
-        "match_found": false,
-        "oeis_ids": [],
-        "error": "HTTP Error 403: Forbidden"
+        "lookup_status": "MATCH_FOUND",
+        "match_found": true,
+        "oeis_ids": [
+          "A006116"
+        ],
+        "url": "https://oeis.org/search?q=1%2C2%2C5%2C16%2C67%2C374%2C2825%2C29212%2C417199%2C8283458&fmt=json",
+        "http_status": 200,
+        "response_content_type": "application/json",
+        "timestamp": "2026-09-19T19:40:44.689202+00:00",
+        "retry_count": 0
       },
-      "verdict": "LOOKUP_FAILED"
+      "verdict": "DUPLICATE"
     },
     {
       "id": "q-binomial-sum-q-3",
@@ -515,12 +521,18 @@
           13721229088
         ],
         "query": "1,2,6,28,212,2664,56632,2052656,127902864,13721229088",
-        "lookup_status": "LOOKUP_FAILED",
-        "match_found": false,
-        "oeis_ids": [],
-        "error": "HTTP Error 403: Forbidden"
+        "lookup_status": "MATCH_FOUND",
+        "match_found": true,
+        "oeis_ids": [
+          "A006117"
+        ],
+        "url": "https://oeis.org/search?q=1%2C2%2C6%2C28%2C212%2C2664%2C56632%2C2052656%2C127902864%2C13721229088&fmt=json",
+        "http_status": 200,
+        "response_content_type": "application/json",
+        "timestamp": "2026-09-19T19:40:44.924102+00:00",
+        "retry_count": 0
       },
-      "verdict": "LOOKUP_FAILED"
+      "verdict": "DUPLICATE"
     },
     {
       "id": "q-binomial-sum-q-4",
@@ -775,12 +787,18 @@
           3387887032202
         ],
         "query": "1,2,7,44,529,12278,565723,51409856,9371059621,3387887032202",
-        "lookup_status": "LOOKUP_FAILED",
-        "match_found": false,
-        "oeis_ids": [],
-        "error": "HTTP Error 403: Forbidden"
+        "lookup_status": "MATCH_FOUND",
+        "match_found": true,
+        "oeis_ids": [
+          "A006118"
+        ],
+        "url": "https://oeis.org/search?q=1%2C2%2C7%2C44%2C529%2C12278%2C565723%2C51409856%2C9371059621%2C3387887032202&fmt=json",
+        "http_status": 200,
+        "response_content_type": "application/json",
+        "timestamp": "2026-09-19T19:40:44.961037+00:00",
+        "retry_count": 0
       },
-      "verdict": "LOOKUP_FAILED"
+      "verdict": "DUPLICATE"
     },
     {
       "id": "q-binomial-sum-q-5",
@@ -1035,12 +1053,18 @@
           260766671206400
         ],
         "query": "1,2,8,64,1120,42176,3583232,666124288,281268665344,260766671206400",
-        "lookup_status": "LOOKUP_FAILED",
-        "match_found": false,
-        "oeis_ids": [],
-        "error": "HTTP Error 403: Forbidden"
+        "lookup_status": "MATCH_FOUND",
+        "match_found": true,
+        "oeis_ids": [
+          "A006119"
+        ],
+        "url": "https://oeis.org/search?q=1%2C2%2C8%2C64%2C1120%2C42176%2C3583232%2C666124288%2C281268665344%2C260766671206400&fmt=json",
+        "http_status": 200,
+        "response_content_type": "application/json",
+        "timestamp": "2026-09-19T19:40:44.998475+00:00",
+        "retry_count": 0
       },
-      "verdict": "LOOKUP_FAILED"
+      "verdict": "DUPLICATE"
     },
     {
       "id": "q-binomial-sum-q-6",
@@ -1295,12 +1319,18 @@
           9326302435784002
         ],
         "query": "1,2,9,88,2111,118182,16649389,5547079988,4671840869691,9326302435784002",
-        "lookup_status": "LOOKUP_FAILED",
-        "match_found": false,
-        "oeis_ids": [],
-        "error": "HTTP Error 403: Forbidden"
+        "lookup_status": "MATCH_FOUND",
+        "match_found": true,
+        "oeis_ids": [
+          "A006120"
+        ],
+        "url": "https://oeis.org/search?q=1%2C2%2C9%2C88%2C2111%2C118182%2C16649389%2C5547079988%2C4671840869691%2C9326302435784002&fmt=json",
+        "http_status": 200,
+        "response_content_type": "application/json",
+        "timestamp": "2026-09-19T19:40:45.038557+00:00",
+        "retry_count": 0
       },
-      "verdict": "LOOKUP_FAILED"
+      "verdict": "DUPLICATE"
     }
   ],
   "pipeline_status": "OK"
