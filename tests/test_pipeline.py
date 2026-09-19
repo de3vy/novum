@@ -128,3 +128,96 @@ def test_novelty_lookup_failure_is_distinct_from_no_match(monkeypatch):
     failed = novelty.lookup_oeis([1, 2, 3])
     assert failed["lookup_status"] == "LOOKUP_FAILED"
     assert failed["lookup_status"] != no_match["lookup_status"]
+
+
+def test_novelty_known_q2_sequence_match(monkeypatch):
+    class Response:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(
+        novelty.json,
+        "load",
+        lambda response: {"results": [{"number":  "A006116"}]},
+    )
+    result = novelty.lookup_oeis(
+        [1, 2, 5, 16, 67, 374, 2825, 29212, 417199, 8283458],
+        retry_delay=0,
+    )
+    assert result["lookup_status"] == "MATCH_FOUND"
+    assert result["oeis_ids"] == ["A006116"]
+    assert result["http_status"] == 200
+    assert result["response_content_type"] == "application/json"
+    assert result["retry_count"] == 0
+
+
+def test_novelty_accepts_oeis_list_response(monkeypatch):
+    class Response:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(novelty.json, "load", lambda response: [{"number": 6116}])
+    result = novelty.lookup_oeis([1, 2, 5], retry_delay=0)
+    assert result["lookup_status"] == "MATCH_FOUND"
+    assert result["oeis_ids"] == ["A006116"]
+
+
+def test_novelty_unlikely_sequence_is_no_match(monkeypatch):
+    class Response:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(novelty.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(novelty.json, "load", lambda response: {"results": []})
+    result = novelty.lookup_oeis([917431, 826547, 731659], retry_delay=0)
+    assert result["lookup_status"] == "NO_MATCH_FOUND"
+    assert result["http_status"] == 200
+
+
+def test_novelty_http_403_is_lookup_failure(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise novelty.urllib.error.HTTPError(
+            "https://oeis.org/search", 403, "Forbidden", {"Content-Type": "text/html"}, None
+        )
+
+    monkeypatch.setattr(novelty.urllib.request, "urlopen", forbidden)
+    result = novelty.lookup_oeis([1, 2, 3], retries=2, retry_delay=0)
+    assert result["lookup_status"] == "LOOKUP_FAILED"
+    assert result["http_status"] == 403
+    assert result["retry_count"] == 0
+    assert result["lookup_status"] != "NO_MATCH_FOUND"
+
+
+def test_novelty_timeout_retries_and_fails(monkeypatch):
+    calls = 0
+
+    def timeout(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(novelty.urllib.request, "urlopen", timeout)
+    result = novelty.lookup_oeis([1, 2, 3], retries=2, retry_delay=0)
+    assert result["lookup_status"] == "LOOKUP_FAILED"
+    assert result["retry_count"] == 2
+    assert calls == 3
