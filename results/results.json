@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T16:39:08.787129+00:00",
+  "generated_at": "2026-09-24T16:57:37.837463+00:00",
   "candidate_count": 5,
   "candidates": [
     {
@@ -263,7 +263,7 @@
         "url": "https://oeis.org/search?q=1%2C1%2C2%2C6%2C12%2C24%2C42%2C71%2C110%2C172&fmt=json",
         "http_status": 200,
         "response_content_type": "application/json",
-        "timestamp": "2026-09-23T16:39:08.906545+00:00",
+        "timestamp": "2026-09-24T16:57:37.957809+00:00",
         "retry_count": 0,
         "error": "OEIS response did not contain a result list"
       },
@@ -530,7 +530,7 @@
         "url": "https://oeis.org/search?q=1%2C1%2C2%2C5%2C12%2C22%2C41%2C64%2C103%2C150&fmt=json",
         "http_status": 200,
         "response_content_type": "application/json",
-        "timestamp": "2026-09-23T16:39:09.103643+00:00",
+        "timestamp": "2026-09-24T16:57:38.148890+00:00",
         "retry_count": 0,
         "error": "OEIS response did not contain a result list"
       },
@@ -797,7 +797,7 @@
         "url": "https://oeis.org/search?q=1%2C1%2C2%2C5%2C10%2C22%2C36%2C64%2C93%2C145&fmt=json",
         "http_status": 200,
         "response_content_type": "application/json",
-        "timestamp": "2026-09-23T16:39:09.142004+00:00",
+        "timestamp": "2026-09-24T16:57:38.234451+00:00",
         "retry_count": 0,
         "error": "OEIS response did not contain a result list"
       },
@@ -1064,7 +1064,7 @@
         "url": "https://oeis.org/search?q=1%2C1%2C2%2C5%2C10%2C17%2C36%2C54%2C93%2C128&fmt=json",
         "http_status": 200,
         "response_content_type": "application/json",
-        "timestamp": "2026-09-23T16:39:09.240443+00:00",
+        "timestamp": "2026-09-24T16:57:38.418097+00:00",
         "retry_count": 0,
         "error": "OEIS response did not contain a result list"
       },
@@ -1331,7 +1331,7 @@
         "url": "https://oeis.org/search?q=1%2C1%2C2%2C5%2C10%2C17%2C26%2C54%2C76%2C128&fmt=json",
         "http_status": 200,
         "response_content_type": "application/json",
-        "timestamp": "2026-09-23T16:39:09.289119+00:00",
+        "timestamp": "2026-09-24T16:57:38.526032+00:00",
         "retry_count": 0,
         "error": "OEIS response did not contain a result list"
       },
